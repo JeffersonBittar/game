@@ -811,14 +811,12 @@ let elapsedFrames = 0;
 // ---- Sistema de nível (gradual, baseado em pontos) ----
 let level = 1;
 const MAX_LEVEL = 10;
-// pontos necessários pra passar do nível N pro N+1 (cresce a cada nível)
-// recalibrado pra nova pontuação (doces +10 a +100, saudáveis -20 a -100, média líquida ~21/item no
-// modo Comer). O modo Cortar não tem itens que descontam (média líquida ~55/item, uns 2,5x maior),
-// então sem esse ajuste ele batia no nível máximo em ~99 acertos (contra ~253 do modo Comer) — quase
-// a partida inteira ficava travada na velocidade máxima, sem parecer acelerar mais.
+// pontos necessários pra passar do nível N pro N+1 (cresce a cada nível) — mesma
+// meta pros dois modos, de propósito: como o Cortar pontua mais por acerto
+// (média ~55/item, contra ~21/item do Comer, que tem itens que descontam),
+// ele sobe de nível mais rápido que o Comer com a mesma meta.
 function pointsForNextLevel(lvl) {
-  const base = 100 + (lvl - 1) * 50; // nível 1->2: 100pts, 2->3: 150pts, 3->4: 200pts...
-  return mode === 'cut' ? Math.round(base * 2.5) : base;
+  return 100 + (lvl - 1) * 50; // nível 1->2: 100pts, 2->3: 150pts, 3->4: 200pts...
 }
 let nextLevelScore = pointsForNextLevel(level);
 
