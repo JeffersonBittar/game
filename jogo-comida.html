@@ -816,13 +816,13 @@ function pointsForNextLevel(lvl) {
 }
 let nextLevelScore = pointsForNextLevel(level);
 
-// multiplicador de velocidade por nível — sobe bem devagar
+// multiplicador de velocidade por nível — sobe de forma bem perceptível
 function speedMultiplier() {
-  return 1 + (level - 1) * 0.08; // +8% de velocidade por nível
+  return 1 + (level - 1) * 0.15; // +15% de velocidade por nível (nível 10 = 2,35x mais rápido)
 }
-// intervalo de spawn diminui com o nível (itens aparecem mais seguido)
+// intervalo de spawn diminui com o nível (itens aparecem bem mais seguido)
 function currentSpawnInterval() {
-  return Math.max(50, spawnInterval - (level - 1) * 7);
+  return Math.max(50, spawnInterval - (level - 1) * 12); // chega no piso (50) já perto do nível 8
 }
 
 function checkLevelUp() {
