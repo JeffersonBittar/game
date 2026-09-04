@@ -11,12 +11,17 @@
     font-family: 'Segoe UI', Arial, sans-serif;
     min-height: 100%;
     touch-action: none;
+    -webkit-tap-highlight-color: transparent; /* tira o "flash" cinza que o mobile mostra num toque parado */
   }
   #gameArea {
     display: flex; align-items: flex-start; justify-content: center;
     gap: 14px; flex-wrap: wrap; padding: 10px;
   }
-  #gameCanvas { display: block; background: #0f3460; cursor: pointer; }
+  #gameCanvas {
+    display: block; background: #0f3460; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+  }
   #rulesPanel {
     background: rgba(15, 52, 96, 0.55);
     border: 1px solid rgba(255,255,255,0.15);
@@ -199,7 +204,8 @@
         </div>
       </div>
     </div>
-    <div style="margin-top:18px; font-size:0.65em; opacity:0.45;">Todos os direitos reservados. Andy Company 2026</div>
+    <div style="margin-top:18px; font-size:0.65em; opacity:0.45;">© 2026 Andy Company. Todos os direitos reservados.
+</div>
   </div>
 
   <div id="gameOverScreen" class="screen hidden">
@@ -535,9 +541,9 @@ async function submitScore(finalScore, finalMode) {
         saveStatus.textContent = 'Não foi possível salvar sua pontuação.';
       }
     } else if (data.is_new_record) {
-      saveStatus.textContent = '🏆 Novo recorde! Pontuação salva no ranking!';
+      saveStatus.textContent = '🏆 Novo recorde! Você ajudou o Fernando nessa missão!';
     } else {
-      saveStatus.textContent = `Você não superou seu recorde (${data.best_score} pontos). O ranking mantém sua melhor pontuação.`;
+      saveStatus.textContent = `Você não superou seu recorde (${data.best_score} pontos), o Fernando ficou triste. O ranking mantém sua melhor pontuação.`;
     }
   } catch (e) {
     console.error(e);
