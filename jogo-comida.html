@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Comida Caindo</title>
 <style>
   html, body {
@@ -52,13 +53,17 @@
   .screen {
     pointer-events: auto;
     text-align: center; color: white;
+    max-height: 100%; max-height: 100dvh;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 16px 12px; box-sizing: border-box;
+    width: 100%; max-width: 480px;
   }
   .hidden { display: none !important; }
-  h1 { font-size: 2.5em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+  h1 { font-size: clamp(1.7em, 8vw, 2.5em); margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
   p.sub { opacity: 0.8; margin-bottom: 30px; }
   .modes { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
   .mode-btn {
-    width: 180px; padding: 25px 15px; border: none; border-radius: 16px;
+    width: clamp(140px, 42vw, 180px); padding: 25px 15px; border: none; border-radius: 16px;
     font-size: 1.1em; font-weight: bold; cursor: pointer;
     transition: transform 0.15s;
     box-shadow: 0 6px 0 rgba(0,0,0,0.3);
@@ -77,7 +82,7 @@
   #retryBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
   #playerNameInput {
     padding: 10px 34px 10px 14px; border-radius: 20px; border: 2px solid transparent;
-    font-size: 1em; text-align: center; width: 200px; outline: none;
+    font-size: 1em; text-align: center; width: min(200px, 62vw); outline: none;
     background: white; transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
   }
   #playerNameInput.confirmed {
@@ -91,6 +96,16 @@
     color: #2e9e4f; font-weight: bold; font-size: 1.1em; pointer-events: none;
   }
   #nameConfirmedBadge.hidden { display: none; }
+  #playerPinInput {
+    padding: 8px 14px; border-radius: 20px; border: 2px solid transparent;
+    font-size: 0.95em; text-align: center; width: min(120px, 42vw); outline: none;
+    letter-spacing: 4px; background: white; transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  #playerPinInput:focus {
+    border-color: #ffd93d; box-shadow: 0 0 0 4px rgba(255,217,61,0.35);
+  }
+  #renameLink { text-decoration: underline; cursor: pointer; }
+  #renameLink:hover { opacity: 0.8; }
   #topFivePreview, #menuTopFivePreview {
     cursor: pointer; padding: 8px; border-radius: 12px;
     transition: background 0.15s; margin-top: 20px;
@@ -100,8 +115,8 @@
     background: rgba(255,255,255,0.08);
   }
   .mini-rank-col {
-    width: 130px; background: rgba(255,255,255,0.06);
-    border-radius: 10px; padding: 8px;
+    width: min(130px, 38vw); background: rgba(255,255,255,0.06);
+    border-radius: 10px; padding: 8px; box-sizing: border-box;
   }
   .mini-rank-title { font-size: 0.78em; font-weight: bold; margin-bottom: 6px; opacity: 0.9; }
   .mini-rank-row {
@@ -143,7 +158,18 @@
         <input id="playerNameInput" type="text" maxlength="16" placeholder="Seu nome">
         <span id="nameConfirmedBadge" class="hidden">✓</span>
       </div>
+      <div style="margin-top:6px;">
+        <input id="playerPinInput" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="PIN (4 dígitos)">
+      </div>
       <div id="nameHint" style="font-size:0.75em; opacity:0.75; margin-top:5px; min-height:14px;"></div>
+      <div id="renameRow" class="hidden" style="margin-top:4px;">
+        <a id="renameLink" href="#" style="font-size:0.75em; color:#4ecdc4;">✏️ Trocar nome (mesmo PIN)</a>
+      </div>
+      <div id="renameForm" class="hidden" style="margin-top:6px; display:flex; gap:6px; justify-content:center; align-items:center;">
+        <input id="newNameInput" type="text" maxlength="16" placeholder="Novo nome" style="padding:8px 12px; border-radius:16px; border:none; font-size:0.9em; text-align:center; width:min(130px, 40vw);">
+        <button id="confirmRenameBtn" style="padding:8px 14px; border-radius:16px; border:none; background:#4ecdc4; color:#1a1a2e; font-weight:bold; cursor:pointer; font-size:0.85em;">OK</button>
+        <button id="cancelRenameBtn" style="padding:8px 14px; border-radius:16px; border:none; background:rgba(255,255,255,0.2); color:white; cursor:pointer; font-size:0.85em;">✕</button>
+      </div>
     </div>
     <div class="modes">
       <button class="mode-btn" id="btnEat">
@@ -191,7 +217,7 @@
       <button class="ranking-tab" data-mode="cut">Cortar</button>
     </div>
     <div id="rankingSubtitle" style="font-size:0.8em; opacity:0.75; margin-bottom:8px;">Top 10 — Comer</div>
-    <div id="rankingList" style="min-width:260px; max-width:320px; max-height:280px; overflow-y:auto; text-align:left; margin:0 auto;"></div>
+    <div id="rankingList" style="width:min(320px, 90vw); max-height:280px; overflow-y:auto; text-align:left; margin:0 auto; box-sizing:border-box;"></div>
 
     <div id="topFivePreview" title="Clique pra ver o ranking geral (os dois modos juntos)">
       <div style="font-size:0.78em; opacity:0.8; margin:14px 0 8px 0;">🌐 Toque aqui pro ranking geral</div>
@@ -219,6 +245,7 @@ const menuScreen = document.getElementById('menuScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const rankingScreen = document.getElementById('rankingScreen');
 const playerNameInput = document.getElementById('playerNameInput');
+const playerPinInput = document.getElementById('playerPinInput');
 const rankingBtn = document.getElementById('rankingBtn');
 const viewRankingBtn = document.getElementById('viewRankingBtn');
 const closeRankingBtn = document.getElementById('closeRankingBtn');
@@ -320,9 +347,17 @@ const sfx = {
 
 const nameConfirmedBadge = document.getElementById('nameConfirmedBadge');
 const nameHint = document.getElementById('nameHint');
+const renameRow = document.getElementById('renameRow');
+const renameLink = document.getElementById('renameLink');
+const renameForm = document.getElementById('renameForm');
+const newNameInput = document.getElementById('newNameInput');
+const confirmRenameBtn = document.getElementById('confirmRenameBtn');
+const cancelRenameBtn = document.getElementById('cancelRenameBtn');
 
-// nome do jogador, lembrado entre sessões
+// nome e PIN do jogador, lembrados entre sessões (só pra preencher automático —
+// quem garante a titularidade de verdade é o banco, via claim_name/submit_score)
 playerNameInput.value = localStorage.getItem('playerName') || '';
+playerPinInput.value = localStorage.getItem('playerPin') || '';
 updateNameVisualState();
 
 function updateNameVisualState() {
@@ -334,17 +369,93 @@ function updateNameVisualState() {
     playerNameInput.classList.remove('confirmed');
     nameConfirmedBadge.classList.add('hidden');
     nameHint.textContent = 'Editando nome...';
+    renameRow.classList.add('hidden');
   } else if (hasName) {
     playerNameInput.classList.remove('editing');
     playerNameInput.classList.add('confirmed');
     nameConfirmedBadge.classList.remove('hidden');
-    nameHint.textContent = 'Nome salvo — vale pro ranking';
+    nameHint.textContent = 'Nome salvo — o PIN garante que só você usa ele';
+    renameRow.classList.remove('hidden');
   } else {
     playerNameInput.classList.remove('editing', 'confirmed');
     nameConfirmedBadge.classList.add('hidden');
     nameHint.textContent = '';
+    renameRow.classList.add('hidden');
   }
 }
+
+renameLink.addEventListener('click', (e) => {
+  e.preventDefault();
+  newNameInput.value = '';
+  renameForm.classList.remove('hidden');
+  newNameInput.focus();
+});
+
+cancelRenameBtn.addEventListener('click', () => {
+  renameForm.classList.add('hidden');
+  nameHint.style.color = '';
+  updateNameVisualState();
+});
+
+confirmRenameBtn.addEventListener('click', async () => {
+  const oldName = getPlayerName();
+  const pin = getPlayerPin();
+  const newName = newNameInput.value.trim().slice(0, 16);
+
+  if (newName.length === 0) {
+    nameHint.style.color = '#ff6b6b';
+    nameHint.textContent = 'Digite o novo nome.';
+    return;
+  }
+  if (!/^\d{4}$/.test(pin)) {
+    nameHint.style.color = '#ff6b6b';
+    nameHint.textContent = 'Digite seu PIN atual pra confirmar a troca.';
+    return;
+  }
+
+  confirmRenameBtn.disabled = true;
+  nameHint.style.color = '';
+  nameHint.textContent = 'Trocando nome...';
+
+  try {
+    const { data, error } = await sbClient.rpc('rename_player', {
+      p_old_name: oldName,
+      p_pin: pin,
+      p_new_name: newName
+    });
+    confirmRenameBtn.disabled = false;
+
+    if (error || !data || data.ok === false) {
+      const reason = data && data.reason;
+      nameHint.style.color = '#ff6b6b';
+      if (reason === 'new_name_taken') {
+        nameHint.textContent = 'Esse nome já está em uso. Escolha outro.';
+      } else if (reason === 'pin_invalid') {
+        nameHint.textContent = 'PIN incorreto pro nome atual.';
+      } else if (reason === 'old_name_not_found') {
+        nameHint.textContent = 'Seu nome atual ainda não está cadastrado — jogue uma vez antes de trocar.';
+      } else if (reason === 'same_name') {
+        nameHint.textContent = 'Esse já é o seu nome atual.';
+      } else {
+        console.error(error);
+        nameHint.textContent = 'Não foi possível trocar o nome agora.';
+      }
+      return;
+    }
+
+    playerNameInput.value = data.new_name || newName;
+    localStorage.setItem('playerName', playerNameInput.value);
+    renameForm.classList.add('hidden');
+    nameHint.style.color = '';
+    updateNameVisualState(); // sobrescreve nameHint com o texto padrão...
+    nameHint.textContent = 'Nome trocado! Seu recorde continua o mesmo.'; // ...então avisa a troca por cima
+  } catch (e) {
+    confirmRenameBtn.disabled = false;
+    console.error(e);
+    nameHint.style.color = '#ff6b6b';
+    nameHint.textContent = 'Não foi possível trocar o nome agora.';
+  }
+});
 
 playerNameInput.addEventListener('focus', updateNameVisualState);
 playerNameInput.addEventListener('blur', updateNameVisualState);
@@ -353,24 +464,79 @@ playerNameInput.addEventListener('input', () => {
   updateNameVisualState();
 });
 
+playerPinInput.addEventListener('input', () => {
+  playerPinInput.value = playerPinInput.value.replace(/\D/g, '').slice(0, 4);
+  localStorage.setItem('playerPin', playerPinInput.value);
+});
+
 function getPlayerName() {
   const name = playerNameInput.value.trim();
   return name.length > 0 ? name.slice(0, 16) : 'Jogador';
 }
 
+function getPlayerPin() {
+  return playerPinInput.value.trim();
+}
+
+// id da sessão de partida em andamento (o servidor carimba o horário de
+// início, pra depois conferir se a pontuação enviada é fisicamente
+// possível pro tempo jogado). Uma sessão só vale pra 1 submit_score.
+let currentSessionId = null;
+
+// Confere no banco se esse nome+PIN batem (ou reivindica o nome, se for a
+// primeira vez que alguém usa ele) e abre uma sessão de partida pro modo
+// escolhido. Retorna { ok, reason, session_id? }.
+async function startSession(mode) {
+  const name = getPlayerName();
+  const pin = getPlayerPin();
+  if (!/^\d{4}$/.test(pin)) {
+    return { ok: false, reason: 'pin_invalid' };
+  }
+  try {
+    const { data, error } = await sbClient.rpc('start_game_session', {
+      p_name: name, p_pin: pin, p_mode: mode
+    });
+    if (error || !data) {
+      console.error(error);
+      return { ok: false, reason: 'error' };
+    }
+    if (data.ok) currentSessionId = data.session_id;
+    return data; // { ok, reason?, attempts_left?, locked_seconds?, banned_seconds?, session_id? }
+  } catch (e) {
+    console.error(e);
+    return { ok: false, reason: 'error' };
+  }
+}
+
 async function submitScore(finalScore, finalMode) {
   saveStatus.textContent = 'Salvando pontuação...';
+  const sessionId = currentSessionId;
+  currentSessionId = null; // sessão só serve pra 1 envio, mesmo se falhar
   try {
-    const { error } = await sbClient.from('scores').insert({
-      name: getPlayerName(),
-      score: finalScore,
-      mode: finalMode
+    const { data, error } = await sbClient.rpc('submit_score', {
+      p_session_id: sessionId,
+      p_name: getPlayerName(),
+      p_pin: getPlayerPin(),
+      p_score: finalScore,
+      p_mode: finalMode
     });
-    if (error) {
-      console.error(error);
-      saveStatus.textContent = 'Não foi possível salvar sua pontuação.';
+    if (error || !data || data.ok === false) {
+      console.error(error || data);
+      if (data && data.reason === 'cheat_detected') {
+        saveStatus.textContent = '⚠️ Pontuação inválida detectada. Esse nome ficou bloqueado por 1 hora.';
+      } else if (data && data.reason === 'banned') {
+        saveStatus.textContent = `Esse nome está bloqueado por comportamento suspeito. Espere ${Math.ceil((data.banned_seconds || 3600) / 60)} min.`;
+      } else if (data && data.reason === 'locked') {
+        saveStatus.textContent = `PIN errado demais vezes. Espere ${data.locked_seconds || 60}s e tente de novo.`;
+      } else if (data && data.reason === 'session_invalid') {
+        saveStatus.textContent = 'Não foi possível confirmar sua partida. Jogue de novo pelo menu.';
+      } else {
+        saveStatus.textContent = 'Não foi possível salvar sua pontuação.';
+      }
+    } else if (data.is_new_record) {
+      saveStatus.textContent = '🏆 Novo recorde! Pontuação salva no ranking!';
     } else {
-      saveStatus.textContent = 'Pontuação salva no ranking!';
+      saveStatus.textContent = `Você não superou seu recorde (${data.best_score} pontos). O ranking mantém sua melhor pontuação.`;
     }
   } catch (e) {
     console.error(e);
@@ -1314,7 +1480,7 @@ function handleCutMove(pos) {
 }
 
 // ---------- MENU / RETRY ----------
-function tryStartGame(selectedMode) {
+async function tryStartGame(selectedMode) {
   getAudioCtx(); // desbloqueia o áudio aqui, no gesto de clique do usuário
   if (playerNameInput.value.trim().length === 0) {
     playerNameInput.placeholder = 'Digite seu nome pra jogar!';
@@ -1323,7 +1489,42 @@ function tryStartGame(selectedMode) {
     playerNameInput.focus();
     return;
   }
+  if (!/^\d{4}$/.test(playerPinInput.value.trim())) {
+    nameHint.textContent = 'Digite um PIN de 4 números pra proteger seu nome!';
+    nameHint.style.color = '#ff6b6b';
+    playerPinInput.focus();
+    return;
+  }
+
   nameHint.style.color = '';
+  nameHint.textContent = 'Verificando nome...';
+  const startBtns = [document.getElementById('btnEat'), document.getElementById('btnCut')];
+  startBtns.forEach(b => b.disabled = true);
+
+  const result = await startSession(selectedMode);
+
+  startBtns.forEach(b => b.disabled = false);
+
+  if (!result.ok) {
+    nameHint.style.color = '#ff6b6b';
+    if (result.reason === 'cheat_detected') {
+      nameHint.textContent = '⚠️ Pontuação inválida detectada. Esse nome ficou bloqueado por 1 hora.';
+    } else if (result.reason === 'banned') {
+      nameHint.textContent = `Esse nome está bloqueado por comportamento suspeito. Espere ${Math.ceil((result.banned_seconds || 3600) / 60)} min.`;
+    } else if (result.reason === 'locked') {
+      nameHint.textContent = `PIN errado demais vezes. Espere ${result.locked_seconds || 60}s e tente de novo.`;
+    } else if (result.reason === 'pin_invalid' && typeof result.attempts_left === 'number') {
+      nameHint.textContent = `PIN errado. Esse nome já pertence a outro PIN — ${result.attempts_left} tentativa(s) antes de bloquear por 1 min.`;
+    } else if (result.reason === 'pin_invalid') {
+      nameHint.textContent = 'Esse nome já pertence a outro PIN. Escolha outro nome ou digite o PIN certo.';
+    } else {
+      nameHint.textContent = 'Não foi possível verificar seu nome agora. Tente de novo.';
+    }
+    playerPinInput.focus();
+    return;
+  }
+
+  nameHint.textContent = '';
   startGame(selectedMode);
 }
 

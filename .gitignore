@@ -1,0 +1,3 @@
+# Scripts de banco (Supabase) — ficam só localmente, nunca sobem pro git.
+# Rode manualmente no SQL Editor do Supabase quando precisar.
+*.sql
