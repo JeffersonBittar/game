@@ -1038,18 +1038,15 @@ function startGame(selectedMode) {
 function endGame() {
   running = false;
   cancelAnimationFrame(animFrameId);
-  drawBackgroundOnly();
+  // limpa o canvas: o cenário animado (bokeh + silhueta) é exclusivo do jogo em si,
+  // fora dele (Fim de Jogo, Menu, Ranking) volta ao fundo padrão do site
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   rulesPanel.classList.add('hidden');
   document.getElementById('finalScore').textContent = score;
   document.getElementById('finalMode').textContent = mode === 'eat' ? 'Comer' : 'Cortar';
   gameOverScreen.classList.remove('hidden');
   sfx.gameOver();
   submitScore(score, mode);
-}
-
-function drawBackgroundOnly() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawSceneBackground();
 }
 
 // ---------- SPAWN ----------
@@ -1682,7 +1679,6 @@ document.getElementById('btnCut').addEventListener('click', () => tryStartGame('
 document.getElementById('retryBtn').addEventListener('click', () => {
   gameOverScreen.classList.add('hidden');
   menuScreen.classList.remove('hidden');
-  drawBackgroundOnly();
   loadMenuTopFivePreview();
 });
 </script>
