@@ -78,13 +78,40 @@
   }
   .hidden { display: none !important; }
   h1 { font-size: clamp(1.7em, 8vw, 2.5em); margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+  .game-title { position: relative; animation: titlePulse 2.2s ease-in-out infinite; }
+  .game-title::before {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: 140%; height: 220%; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255,217,61,0.28) 0%, rgba(255,217,61,0) 70%);
+    z-index: -1; pointer-events: none;
+    animation: titleGlow 2.2s ease-in-out infinite;
+  }
+  .game-title .title-emoji { display: inline-block; animation: emojiBounce 1s ease-in-out infinite; }
+  @keyframes titlePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  @keyframes titleGlow {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+  @keyframes emojiBounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-6px) rotate(-10deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .game-title, .game-title .title-emoji, .game-title::before { animation: none; }
+  }
   p.sub { opacity: 0.8; margin-bottom: 30px; }
   .modes { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
   .mode-btn {
     width: clamp(140px, 42vw, 180px); padding: 25px 15px; border: none; border-radius: 16px;
     font-size: 1.1em; font-weight: bold; cursor: pointer;
-    transition: transform 0.15s;
+    transition: transform 0.15s, box-shadow 0.15s;
     box-shadow: 0 6px 0 rgba(0,0,0,0.3);
+  }
+  @media (hover: hover) {
+    .mode-btn:hover { transform: translateY(-3px); box-shadow: 0 9px 0 rgba(0,0,0,0.3); }
   }
   .mode-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
   .mode-btn .emoji { font-size: 2.5em; display: block; margin-bottom: 8px; }
@@ -139,8 +166,9 @@
   .mini-rank-title { font-size: 0.78em; font-weight: bold; margin-bottom: 6px; opacity: 0.9; }
   .mini-rank-row {
     display: flex; align-items: center; font-size: 0.72em;
-    color: white; padding: 2px 0; text-align: left;
+    color: white; padding: 3px 4px; text-align: left; border-radius: 6px;
   }
+  .mini-rank-row.champion { background: rgba(255,217,61,0.18); }
   .mini-rank-row .mpos { width: 16px; flex-shrink: 0; text-align: center; font-weight: bold; opacity: 0.85; }
   .mini-rank-row .mname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; }
   .mini-rank-row .mscore { flex-shrink: 0; color: #ffd93d; font-weight: bold; }
@@ -177,7 +205,7 @@
 
 <div id="ui">
   <div id="menuScreen" class="screen">
-    <h1>🍽️ Jogo do Comilão</h1>
+    <h1 class="game-title"><span class="title-emoji">🍽️</span> Jogo do Comilão</h1>
     <p class="sub">Escolha como você vai jogar</p>
     <div id="nameField" style="margin-bottom: 16px;">
       <div style="position:relative; display:inline-block;">
@@ -614,7 +642,7 @@ async function loadMiniTopFive(forMode, containerEl) {
     containerEl.innerHTML = data.map((row, i) => {
       const medal = medalFor(i);
       return `
-      <div class="mini-rank-row">
+      <div class="mini-rank-row${i === 0 ? ' champion' : ''}">
         <span class="mpos">${medal || (i + 1) + '.'}</span>
         <span class="mname">${escapeHTML(row.name)}</span>
         <span class="mscore">${row.score}</span>
