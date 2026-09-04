@@ -817,14 +817,17 @@ const MAX_LEVEL = 10;
 // então sem esse ajuste ele batia no nível máximo em ~99 acertos (contra ~253 do modo Comer) — quase
 // a partida inteira ficava travada na velocidade máxima, sem parecer acelerar mais.
 function pointsForNextLevel(lvl) {
-  const base = 200 + (lvl - 1) * 100; // nível 1->2: 200pts, 2->3: 300pts, 3->4: 400pts...
+  const base = 100 + (lvl - 1) * 50; // nível 1->2: 100pts, 2->3: 150pts, 3->4: 200pts...
   return mode === 'cut' ? Math.round(base * 2.5) : base;
 }
 let nextLevelScore = pointsForNextLevel(level);
 
-// multiplicador de velocidade por nível — sobe de forma bem perceptível
+// multiplicador de velocidade por nível — nível 1 a 7 sobe 1x por nível (1x,2x,...7x),
+// nível 8 = 7.5x, nível 9 e 10 = 8x (teto)
 function speedMultiplier() {
-  return 1 + (level - 1) * 0.15; // +15% de velocidade por nível (nível 10 = 2,35x mais rápido)
+  if (level <= 7) return level;
+  if (level === 8) return 7.5;
+  return 8;
 }
 // intervalo de spawn diminui com o nível (itens aparecem bem mais seguido)
 function currentSpawnInterval() {
@@ -848,6 +851,7 @@ let avatarBottomY = 0; // posição fixa do "chão" onde o avatar fica (pé do a
 let eatPulse = 0; // 0 a 1, cria o efeito de "mastigada" ao pegar comida, decai com o tempo
 let bellyLevel = 0; // 0 a 1, "medidor de barriga" cartunesco — cresce ao comer, desincha aos poucos
 let bellyBounce = 0; // 0 a 1, dá o efeito elástico de "boing" a cada comida engolida
+let angryLevel = 0; // 0 a 1, mostra a carinha de raiva ao comer algo que tira ponto, decai com o tempo
 
 // ---- Animação real de mastigação (parado + mastigando) ----
 let eatAvatarState = 'idle'; // 'idle' | 'chewing'
@@ -875,6 +879,7 @@ function resetGameState() {
   eatPulse = 0;
   bellyLevel = 0;
   bellyBounce = 0;
+  angryLevel = 0;
   eatAvatarState = 'idle';
   eatAnimIndex = 0;
   eatAnimTimer = 0;
@@ -1083,6 +1088,7 @@ function update() {
         } else {
           bellyLevel = Math.max(0, bellyLevel - 0.05);
           sfx.healthy();
+          angryLevel = 1; // comeu algo que tira ponto — carinha de raiva por um instante
         }
         bellyBounce = 1;
         checkLevelUp();
@@ -1168,6 +1174,12 @@ function update() {
     bellyBounce *= 0.88;
   } else {
     bellyBounce = 0;
+  }
+
+  if (angryLevel > 0.02) {
+    angryLevel *= 0.95; // decai mais devagar que o "boing", pra dar tempo de notar a carinha de raiva
+  } else {
+    angryLevel = 0;
   }
 
   if (mode === 'eat' && bellyLevel > 0) {
@@ -1290,9 +1302,21 @@ function draw() {
   drawHUD();
 }
 
+// mistura duas cores hex (#rrggbb) por um fator t (0 = cor1, 1 = cor2)
+function lerpColor(hex1, hex2, t) {
+  const a = parseInt(hex1.slice(1), 16), b = parseInt(hex2.slice(1), 16);
+  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+
 function drawBellyMascot() {
   // "medidor de satisfação" cartunesco — uma bolha fofa que infla ao comer e desincha aos poucos.
   // É um personagem/ícone à parte, desenhado do zero (não é o avatar real) — estilo desenho animado.
+  // Fica com carinha de raiva por um instante quando come algo que tira ponto (angryLevel).
   const baseX = canvas.width - 46;
   const baseY = 104;
   const baseR = 22;
@@ -1301,22 +1325,23 @@ function drawBellyMascot() {
   const squashX = 1 + bounce * 0.12;
   const squashY = 1 - bounce * 0.10;
   const wobble = Math.sin(elapsedFrames * 0.1) * 2;
+  const angry = angryLevel; // 0 a 1
 
   ctx.save();
   ctx.translate(baseX, baseY + wobble);
   ctx.scale(squashX, squashY);
 
-  // corpo da bolha (gradiente estilo geleia/balão)
+  // corpo da bolha (gradiente estilo geleia/balão) — vira avermelhado conforme angryLevel sobe
   const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.15, 0, 0, r);
-  grad.addColorStop(0, '#fff3b0');
-  grad.addColorStop(0.55, '#ffcc4d');
-  grad.addColorStop(1, '#f4a91b');
+  grad.addColorStop(0, lerpColor('#fff3b0', '#ffd0b0', angry));
+  grad.addColorStop(0.55, lerpColor('#ffcc4d', '#ff6b4d', angry));
+  grad.addColorStop(1, lerpColor('#f4a91b', '#d43d1b', angry));
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fillStyle = grad;
   ctx.fill();
   ctx.lineWidth = 3.5;
-  ctx.strokeStyle = '#7a4a12';
+  ctx.strokeStyle = lerpColor('#7a4a12', '#7a1a12', angry);
   ctx.stroke();
 
   // brilho cartunesco
@@ -1325,7 +1350,7 @@ function drawBellyMascot() {
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.fill();
 
-  // carinha (fica mais feliz/satisfeito quanto mais cheio)
+  // carinha (fica mais feliz/satisfeito quanto mais cheio; de raiva se acabou de perder ponto)
   const eyeY = -r * 0.08;
   const eyeSpacing = r * 0.32;
   ctx.fillStyle = '#3a2410';
@@ -1334,15 +1359,37 @@ function drawBellyMascot() {
   ctx.arc(eyeSpacing, eyeY, r * 0.075, 0, Math.PI * 2);
   ctx.fill();
 
-  // boca — sorriso que aumenta com o nível da barriga
-  const smileW = r * (0.3 + bellyLevel * 0.18);
-  const smileH = r * (0.22 + bellyLevel * 0.12);
-  ctx.beginPath();
-  ctx.arc(0, r * 0.12, smileW, 0.15 * Math.PI, 0.85 * Math.PI);
-  ctx.lineWidth = r * 0.09;
-  ctx.strokeStyle = '#3a2410';
-  ctx.lineCap = 'round';
-  ctx.stroke();
+  if (angry > 0.5) {
+    // sobrancelhas de raiva — duas linhas em V apontando pra baixo, pro centro
+    ctx.lineWidth = r * 0.09;
+    ctx.strokeStyle = '#3a2410';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-eyeSpacing - r * 0.16, eyeY - r * 0.28);
+    ctx.lineTo(-eyeSpacing + r * 0.14, eyeY - r * 0.08);
+    ctx.moveTo(eyeSpacing + r * 0.16, eyeY - r * 0.28);
+    ctx.lineTo(eyeSpacing - r * 0.14, eyeY - r * 0.08);
+    ctx.stroke();
+
+    // boca — vira uma careta de raiva (arco virado pra cima), mais abaixo pra não
+    // encostar nas sobrancelhas
+    const mouthW = r * (0.3 + bellyLevel * 0.18);
+    ctx.beginPath();
+    ctx.arc(0, r * 0.42, mouthW, 1.15 * Math.PI, 1.85 * Math.PI);
+    ctx.lineWidth = r * 0.09;
+    ctx.strokeStyle = '#3a2410';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  } else {
+    // boca — sorriso que aumenta com o nível da barriga
+    const smileW = r * (0.3 + bellyLevel * 0.18);
+    ctx.beginPath();
+    ctx.arc(0, r * 0.12, smileW, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.lineWidth = r * 0.09;
+    ctx.strokeStyle = '#3a2410';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
 
   ctx.restore();
 
