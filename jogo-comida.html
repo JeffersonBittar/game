@@ -849,7 +849,7 @@ let avatarBottomY = 0; // posição fixa do "chão" onde o avatar fica (pé do a
 let eatPulse = 0; // 0 a 1, cria o efeito de "mastigada" ao pegar comida, decai com o tempo
 let bellyLevel = 0; // 0 a 1, "medidor de barriga" cartunesco — cresce ao comer, desincha aos poucos
 let bellyBounce = 0; // 0 a 1, dá o efeito elástico de "boing" a cada comida engolida
-let angryLevel = 0; // 0 a 1, mostra a carinha de raiva ao comer algo que tira ponto, decai com o tempo
+let angryLevel = 0; // 0 = satisfeito, 1 = raiva — reflete o último item comido, sem decair sozinho
 
 // ---- Animação real de mastigação (parado + mastigando) ----
 let eatAvatarState = 'idle'; // 'idle' | 'chewing'
@@ -1083,10 +1083,11 @@ function update() {
         if (it.points >= 0) {
           bellyLevel = Math.min(1, bellyLevel + 0.09);
           sfx.sweet();
+          angryLevel = 0; // último item foi bom — carinha satisfeita, fica assim até o próximo item
         } else {
           bellyLevel = Math.max(0, bellyLevel - 0.05);
           sfx.healthy();
-          angryLevel = 1; // comeu algo que tira ponto — carinha de raiva por um instante
+          angryLevel = 1; // último item tirou ponto — carinha de raiva, fica assim até o próximo item
         }
         bellyBounce = 1;
         checkLevelUp();
@@ -1174,11 +1175,6 @@ function update() {
     bellyBounce = 0;
   }
 
-  if (angryLevel > 0.02) {
-    angryLevel *= 0.95; // decai mais devagar que o "boing", pra dar tempo de notar a carinha de raiva
-  } else {
-    angryLevel = 0;
-  }
 
   if (mode === 'eat' && bellyLevel > 0) {
     bellyLevel = Math.max(0, bellyLevel - 0.0018); // desincha bem devagar com o tempo
@@ -1314,7 +1310,8 @@ function lerpColor(hex1, hex2, t) {
 function drawBellyMascot() {
   // "medidor de satisfação" cartunesco — uma bolha fofa que infla ao comer e desincha aos poucos.
   // É um personagem/ícone à parte, desenhado do zero (não é o avatar real) — estilo desenho animado.
-  // Fica com carinha de raiva por um instante quando come algo que tira ponto (angryLevel).
+  // Reflete o último item comido: raiva se tirou ponto, satisfeito se somou (angryLevel),
+  // e fica assim até o próximo item ser comido (não decai sozinho).
   const baseX = canvas.width - 46;
   const baseY = 104;
   const baseR = 22;
@@ -1405,8 +1402,9 @@ function drawBellyMascot() {
 function drawHUD() {
   if (!running) return;
 
-  // faixa translúcida no topo pra dar contraste ao texto/emoji
-  const barHeight = 46;
+  // faixa translúcida no topo pra dar contraste ao texto/emoji — um pouco mais
+  // alta que antes, pra caber a linha de "faltam X pts" embaixo do nível
+  const barHeight = 58;
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,0.28)';
   ctx.fillRect(0, 0, canvas.width, barHeight);
@@ -1425,13 +1423,25 @@ function drawHUD() {
   ctx.textAlign = 'center';
   ctx.font = 'bold 18px sans-serif';
   ctx.fillStyle = '#ffd93d';
-  ctx.fillText('Nível ' + level, canvas.width / 2, barHeight / 2);
+  ctx.fillText('Nível ' + level, canvas.width / 2, barHeight / 2 - 10);
+
+  // Faltam X pts pro próximo nível — segue o placar exato: se o score cai (item
+  // que desconta ponto), essa distância aumenta na mesma hora, sem cálculo extra,
+  // porque é sempre nextLevelScore - score.
+  ctx.font = '12px sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  if (level >= MAX_LEVEL) {
+    ctx.fillText('Nível máximo!', canvas.width / 2, barHeight / 2 + 11);
+  } else {
+    const faltam = Math.max(0, nextLevelScore - score);
+    ctx.fillText('faltam ' + faltam + ' pts', canvas.width / 2, barHeight / 2 + 11);
+  }
 
   // Vidas / coraçõezinhos (direita)
   ctx.textAlign = 'right';
   ctx.font = '22px sans-serif';
   const heartsStr = '❤️'.repeat(Math.max(0, lives));
-  ctx.fillText(heartsStr, canvas.width - 14, barHeight / 2 + 1);
+  ctx.fillText(heartsStr, canvas.width - 14, barHeight / 2 - 5);
 
   ctx.restore();
 }
