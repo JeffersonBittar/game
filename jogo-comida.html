@@ -1384,6 +1384,8 @@ function drawHUD() {
 function loop() {
   if (!running) return;
   update();
+  if (!running) return; // update() pode ter chamado endGame() (fim de vida/bomba) —
+                         // nesse caso o canvas já foi limpo, não desenha de novo por cima
   draw();
   animFrameId = requestAnimationFrame(loop);
 }
