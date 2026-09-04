@@ -91,6 +91,7 @@
   #btnEat { background: #ffd93d; color: #1a1a2e; }
   #btnCut { background: #ff6b6b; color: white; }
   #gameOverScreen h1 { color: #ff6b6b; }
+  #rankingScreen { align-self: flex-start; margin-top: 16px; }
   .stat { font-size: 1.3em; margin: 8px 0; }
   #retryBtn {
     margin-top: 20px; padding: 14px 40px; font-size: 1.1em; font-weight: bold;
@@ -124,11 +125,10 @@
   }
   #renameLink { text-decoration: underline; cursor: pointer; }
   #renameLink:hover { opacity: 0.8; }
-  #topFivePreview, #menuTopFivePreview {
+  #menuTopFivePreview {
     cursor: pointer; padding: 8px; border-radius: 12px;
     transition: background 0.15s; margin-top: 20px;
   }
-  #topFivePreview:hover, #topFivePreview:active,
   #menuTopFivePreview:hover, #menuTopFivePreview:active {
     background: rgba(255,255,255,0.08);
   }
@@ -159,6 +159,13 @@
   .ranking-row.top1 { background: rgba(255,217,61,0.25); }
   .ranking-row.top2 { background: rgba(192,192,192,0.20); }
   .ranking-row.top3 { background: rgba(205,127,50,0.20); }
+  #rankingList {
+    scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent;
+  }
+  #rankingList::-webkit-scrollbar { width: 6px; }
+  #rankingList::-webkit-scrollbar-track { background: transparent; }
+  #rankingList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 10px; transition: background-color 0.15s; }
+  #rankingList::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.32); }
 </style>
 </head>
 <body>
@@ -236,23 +243,10 @@
     <div id="rankingTabs" style="display:flex; gap:8px; justify-content:center; margin-bottom:10px;">
       <button class="ranking-tab active" data-mode="eat">Comer</button>
       <button class="ranking-tab" data-mode="cut">Cortar</button>
+      <button class="ranking-tab" data-mode="all">Geral</button>
     </div>
-    <div id="rankingSubtitle" style="font-size:0.8em; opacity:0.75; margin-bottom:8px;">Top 10 — Comer</div>
-    <div id="rankingList" style="width:min(320px, 90vw); max-height:280px; overflow-y:auto; text-align:left; margin:0 auto; box-sizing:border-box;"></div>
-
-    <div id="topFivePreview" title="Clique pra ver o ranking geral (os dois modos juntos)">
-      <div style="font-size:0.78em; opacity:0.8; margin:14px 0 8px 0;">🌐 Toque aqui pro ranking geral</div>
-      <div style="display:flex; gap:10px; justify-content:center;">
-        <div class="mini-rank-col">
-          <div class="mini-rank-title">🍽️ Comer</div>
-          <div id="miniRankEat"></div>
-        </div>
-        <div class="mini-rank-col">
-          <div class="mini-rank-title">🔪 Cortar</div>
-          <div id="miniRankCut"></div>
-        </div>
-      </div>
-    </div>
+    <div id="rankingSubtitle" style="font-size:0.8em; opacity:0.75; margin-bottom:8px;">Ranking — Comer</div>
+    <div id="rankingList" style="width:min(320px, 90vw); max-height:min(65vh, calc(100dvh - 260px), 560px); overflow-y:auto; text-align:left; margin:0 auto; padding-right:4px; box-sizing:border-box;"></div>
 
     <button id="closeRankingBtn" style="margin-top:18px; padding:10px 26px; font-size:0.95em; font-weight:bold; background:#4ecdc4; color:#1a1a2e; border:none; border-radius:24px; cursor:pointer;">Voltar</button>
   </div>
@@ -572,9 +566,9 @@ function medalFor(i) {
 async function loadRanking(forMode) {
   rankingList.innerHTML = '<div style="opacity:0.7; padding:12px;">Carregando...</div>';
   try {
-    let query = sbClient.from('scores').select('name, score, mode').order('score', { ascending: false }).limit(10);
+    let query = sbClient.from('scores').select('name, score, mode').order('score', { ascending: false });
     if (forMode !== 'all') {
-      query = sbClient.from('scores').select('name, score').eq('mode', forMode).order('score', { ascending: false }).limit(10);
+      query = sbClient.from('scores').select('name, score').eq('mode', forMode).order('score', { ascending: false });
     }
     const { data, error } = await query;
 
@@ -632,11 +626,6 @@ async function loadMiniTopFive(forMode, containerEl) {
   }
 }
 
-function loadTopFivePreview() {
-  loadMiniTopFive('eat', document.getElementById('miniRankEat'));
-  loadMiniTopFive('cut', document.getElementById('miniRankCut'));
-}
-
 function loadMenuTopFivePreview() {
   loadMiniTopFive('eat', document.getElementById('menuMiniRankEat'));
   loadMiniTopFive('cut', document.getElementById('menuMiniRankCut'));
@@ -649,7 +638,6 @@ function escapeHTML(str) {
 }
 
 const rankingSubtitle = document.getElementById('rankingSubtitle');
-const topFivePreview = document.getElementById('topFivePreview');
 const menuTopFivePreview = document.getElementById('menuTopFivePreview');
 let currentRankingMode = 'eat';
 
@@ -658,15 +646,13 @@ const RANKING_LABELS = { eat: 'Comer', cut: 'Cortar', all: 'Geral (Comer + Corta
 function setRankingView(forMode) {
   currentRankingMode = forMode;
   rankingTabs.forEach(t => t.classList.toggle('active', t.dataset.mode === forMode));
-  rankingSubtitle.textContent = 'Top 10 — ' + RANKING_LABELS[forMode];
+  rankingSubtitle.textContent = 'Ranking — ' + RANKING_LABELS[forMode];
   loadRanking(forMode);
 }
 
 rankingTabs.forEach(tab => {
   tab.addEventListener('click', () => setRankingView(tab.dataset.mode));
 });
-
-topFivePreview.addEventListener('click', () => setRankingView('all'));
 
 menuTopFivePreview.addEventListener('click', () => openRanking('all'));
 
@@ -675,7 +661,6 @@ function openRanking(preferredMode) {
   menuScreen.classList.add('hidden');
   gameOverScreen.classList.add('hidden');
   rankingScreen.classList.remove('hidden');
-  loadTopFivePreview();
 }
 
 function backToMenu() {
@@ -685,7 +670,7 @@ function backToMenu() {
   loadMenuTopFivePreview();
 }
 
-rankingBtn.addEventListener('click', () => openRanking('all'));
+rankingBtn.addEventListener('click', () => openRanking('eat'));
 viewRankingBtn.addEventListener('click', () => openRanking(mode));
 closeRankingBtn.addEventListener('click', backToMenu);
 
