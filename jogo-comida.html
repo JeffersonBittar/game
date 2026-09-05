@@ -832,7 +832,7 @@ const BOMB_EMOJI = '💣';
 
 const EAT_MAX_LIVES = 3; // vidas iniciais/máximas no modo comer
 const HEART_EMOJI = '❤️';
-const HEART_CHANCE = 0.10; // 10% de chance de cair um coração em vez de comida
+const HEART_CHANCE = 0.05; // 5% de chance de cair um coração em vez de comida
 
 const CUT_MAX_LIVES = 3; // vidas iniciais/máximas no modo cortar
 const CUT_POINTS_MIN = 10;
@@ -938,7 +938,7 @@ let elapsedFrames = 0;
 
 // ---- Sistema de nível (gradual, baseado em pontos) ----
 let level = 1;
-const MAX_LEVEL = 10;
+const MAX_LEVEL = 20;
 // pontos necessários pra passar do nível N pro N+1 (cresce a cada nível) — mesma
 // meta pros dois modos, de propósito: como o Cortar pontua mais por acerto
 // (média ~55/item, contra ~21/item do Comer, que tem itens que descontam),
@@ -948,16 +948,21 @@ function pointsForNextLevel(lvl) {
 }
 let nextLevelScore = pointsForNextLevel(level);
 
-// multiplicador de velocidade por nível — nível 1 a 7 sobe 1x por nível (1x,2x,...7x),
-// nível 8 = 7.5x, nível 9 e 10 = 8x (teto)
+// multiplicador de velocidade por nível — sobe 1x por nível direto até o
+// nível 20 (1x, 2x, ..., 20x), sem plateau: continua ficando mais difícil
+// até virar praticamente impossível de sobreviver muito tempo lá em cima
 function speedMultiplier() {
-  if (level <= 7) return level;
-  if (level === 8) return 7.5;
-  return 8;
+  return level;
 }
 // intervalo de spawn diminui com o nível (itens aparecem bem mais seguido)
 function currentSpawnInterval() {
   return Math.max(50, spawnInterval - (level - 1) * 12); // chega no piso (50) já perto do nível 8
+}
+// quantidade de itens que caem juntos a cada spawn — sobe 1 a cada 5 níveis
+// (1 até o nível 5, 2 até o 10, 3 até o 15, 4 do 16 ao 20), somando com a
+// velocidade e o intervalo pra deixar o topo do jogo realmente impossível
+function spawnCountForLevel() {
+  return 1 + Math.floor((level - 1) / 5);
 }
 
 function checkLevelUp() {
@@ -1217,7 +1222,8 @@ function update() {
   spawnTimer++;
   if (spawnTimer >= currentSpawnInterval()) {
     spawnTimer = 0;
-    spawnItem();
+    const count = spawnCountForLevel();
+    for (let i = 0; i < count; i++) spawnItem();
   }
 
   if (mode === 'eat') {
