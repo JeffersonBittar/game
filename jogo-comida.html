@@ -977,11 +977,11 @@ function speedMultiplier() {
 function currentSpawnInterval() {
   return Math.max(50, spawnInterval - (level - 1) * 12); // chega no piso (50) já perto do nível 8
 }
-// quantidade de itens que caem juntos a cada spawn — sobe 1 a cada 5 níveis
-// (1 até o nível 5, 2 até o 10, 3 até o 15, 4 do 16 ao 20), somando com a
-// velocidade e o intervalo pra deixar o topo do jogo realmente impossível
+// quantidade de itens que caem juntos a cada spawn — no máximo 2, e só nos
+// níveis mais altos (agrupar mais que isso deixava impossível pegar tudo,
+// custando várias vidas de uma vez de forma injusta)
 function spawnCountForLevel() {
-  return 1 + Math.floor((level - 1) / 5);
+  return level >= 14 ? 2 : 1; // no máximo 2 itens juntos, só nos níveis mais altos
 }
 
 function checkLevelUp() {
@@ -1308,6 +1308,19 @@ function update() {
       it.y += it.vy;
       it.vy += it.gravity;
       it.rotation += it.rotSpeed;
+
+      // quica nas bordas laterais em vez de sumir da tela — em níveis altos
+      // o empurrão horizontal (vx * velocidade do nível) é forte o bastante
+      // pra levar o item pra fora antes de chegar embaixo, fazendo ele
+      // desaparecer sem dar chance de cortar e ainda descontar vida
+      const half = it.size / 2;
+      if (it.x < half) {
+        it.x = half;
+        it.vx = Math.abs(it.vx);
+      } else if (it.x > canvas.width - half) {
+        it.x = canvas.width - half;
+        it.vx = -Math.abs(it.vx);
+      }
 
       if (it.y > canvas.height + 60) {
         items.splice(i, 1);
