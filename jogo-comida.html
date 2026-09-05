@@ -141,6 +141,12 @@
   #playerNameInput.editing, #playerNameInput:focus {
     border-color: #ffd93d; box-shadow: 0 0 0 4px rgba(255,217,61,0.35); background: white;
   }
+  #updateBanner {
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 9999; padding: 8px 16px; border-radius: 20px; border: none;
+    background: #4ecdc4; color: #1a1a2e; font-weight: bold; font-size: 0.85em;
+    cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+  }
   #playerNameInput[readonly] { cursor: default; }
   #playerNameInput[readonly]:focus {
     border-color: #7CFC9A; box-shadow: none; background: #f2fff5;
@@ -209,6 +215,8 @@
 </style>
 </head>
 <body>
+
+<button id="updateBanner" class="hidden">🔄 Nova versão disponível — toque pra atualizar</button>
 
 <div id="gameArea">
 <canvas id="gameCanvas"></canvas>
@@ -1808,6 +1816,45 @@ document.getElementById('retryBtn').addEventListener('click', () => {
   menuScreen.classList.remove('hidden');
   loadMenuTopFivePreview();
 });
+
+// ---------- CHECAGEM DE VERSÃO NOVA ----------
+// Confere de tempos em tempos (e quando a aba volta a ficar visível) se o
+// arquivo no servidor mudou desde que a página carregou, usando o
+// ETag/Last-Modified que o próprio host já manda a cada deploy — sem
+// precisar marcar "versão X" manualmente no código a cada mudança.
+const updateBanner = document.getElementById('updateBanner');
+let baselineVersionTag = null;
+
+async function fetchVersionTag() {
+  try {
+    const res = await fetch(location.href, { method: 'HEAD', cache: 'no-store' });
+    return res.headers.get('ETag') || res.headers.get('Last-Modified') || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function checkForUpdate() {
+  if (!baselineVersionTag) return; // não deu pra detectar da 1ª vez, não tenta mais
+  const current = await fetchVersionTag();
+  if (current && current !== baselineVersionTag) {
+    if (running) {
+      updateBanner.classList.remove('hidden');
+    } else {
+      location.reload();
+    }
+  }
+}
+
+updateBanner.addEventListener('click', () => location.reload());
+
+(async () => {
+  baselineVersionTag = await fetchVersionTag();
+  setInterval(checkForUpdate, 3 * 60 * 1000); // a cada 3 min
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkForUpdate();
+  });
+})();
 </script>
 </body>
 </html>
