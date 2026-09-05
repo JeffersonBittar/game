@@ -141,6 +141,10 @@
   #playerNameInput.editing, #playerNameInput:focus {
     border-color: #ffd93d; box-shadow: 0 0 0 4px rgba(255,217,61,0.35); background: white;
   }
+  #playerNameInput[readonly] { cursor: default; }
+  #playerNameInput[readonly]:focus {
+    border-color: #7CFC9A; box-shadow: none; background: #f2fff5;
+  }
   #nameConfirmedBadge {
     position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
     color: #2e9e4f; font-weight: bold; font-size: 1.1em; pointer-events: none;
@@ -409,24 +413,30 @@ const cancelRenameBtn = document.getElementById('cancelRenameBtn');
 // quem garante a titularidade de verdade é o banco, via claim_name/submit_score)
 playerNameInput.value = localStorage.getItem('playerName') || '';
 playerPinInput.value = localStorage.getItem('playerPin') || '';
+// nome já confirmado pelo servidor nesta ou numa sessão anterior (localStorage
+// só guarda nome que já foi validado) — trava o campo pra edição só poder
+// acontecer pelo fluxo de "Trocar nome" (que atualiza o nome em todas as
+// tabelas). Editar o campo direto criava um jogador novo do zero com o
+// mesmo PIN, sem migrar a pontuação.
+let nameLocked = playerNameInput.value.trim().length > 0;
 updateNameVisualState();
 
 function updateNameVisualState() {
-  const hasName = playerNameInput.value.trim().length > 0;
   const isFocused = document.activeElement === playerNameInput;
+  playerNameInput.readOnly = nameLocked;
 
-  if (isFocused) {
+  if (nameLocked) {
+    playerNameInput.classList.remove('editing');
+    playerNameInput.classList.add('confirmed');
+    nameConfirmedBadge.classList.remove('hidden');
+    nameHint.textContent = 'Nome salvo — pra trocar, use "Trocar nome" abaixo';
+    renameRow.classList.remove('hidden');
+  } else if (isFocused) {
     playerNameInput.classList.add('editing');
     playerNameInput.classList.remove('confirmed');
     nameConfirmedBadge.classList.add('hidden');
     nameHint.textContent = 'Editando nome...';
     renameRow.classList.add('hidden');
-  } else if (hasName) {
-    playerNameInput.classList.remove('editing');
-    playerNameInput.classList.add('confirmed');
-    nameConfirmedBadge.classList.remove('hidden');
-    nameHint.textContent = 'Nome salvo — o PIN garante que só você usa ele';
-    renameRow.classList.remove('hidden');
   } else {
     playerNameInput.classList.remove('editing', 'confirmed');
     nameConfirmedBadge.classList.add('hidden');
@@ -1786,7 +1796,8 @@ async function tryStartGame(selectedMode) {
     return;
   }
 
-  nameHint.textContent = '';
+  nameLocked = true; // primeira confirmação bem-sucedida com o servidor: trava o campo
+  updateNameVisualState();
   startGame(selectedMode);
 }
 
