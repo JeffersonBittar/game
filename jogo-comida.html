@@ -1828,7 +1828,12 @@ let baselineVersionTag = null;
 
 async function fetchVersionTag() {
   try {
-    const res = await fetch(location.href, { method: 'HEAD', cache: 'no-store' });
+    // parâmetro que muda a cada chamada: sem isso, o CDN do host pode
+    // responder uma cópia em cache por um tempo depois do deploy, mesmo com
+    // cache:'no-store' (que só evita o cache do navegador, não o do meio
+    // do caminho) — a URL "nova" a cada vez força uma resposta fresca.
+    const bustUrl = location.href.split('#')[0].split('?')[0] + '?_cb=' + Date.now();
+    const res = await fetch(bustUrl, { method: 'HEAD', cache: 'no-store' });
     return res.headers.get('ETag') || res.headers.get('Last-Modified') || null;
   } catch (e) {
     return null;
