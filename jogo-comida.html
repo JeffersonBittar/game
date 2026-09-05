@@ -927,6 +927,8 @@ let score = 0;
 let lives = 3;
 let running = false;
 let animFrameId = null;
+let heartbeatIntervalId = null;
+let realInputCount = 0; // toques/movimentos reais desde o último heartbeat (anti-cheat)
 
 let items = [];
 let particles = [];
@@ -971,6 +973,7 @@ function checkLevelUp() {
 // ---- Modo COMER (avatar) ----
 let mouth = { x: 0, y: 0, w: 55, h: 42 };
 let mouthTargetX = 0;
+let lastTouchX = null; // último X do toque, pra mover a boca por arrasto relativo (não por posição absoluta)
 let avatarBottomY = 0; // posição fixa do "chão" onde o avatar fica (pé do avatar)
 let eatPulse = 0; // 0 a 1, cria o efeito de "mastigada" ao pegar comida, decai com o tempo
 let bellyLevel = 0; // 0 a 1, "medidor de barriga" cartunesco — cresce ao comer, desincha aos poucos
@@ -998,6 +1001,8 @@ function resetGameState() {
   spawnTimer = 0;
   elapsedFrames = 0;
   mouth.x = canvas.width / 2;
+  mouthTargetX = canvas.width / 2;
+  lastTouchX = null;
   avatarBottomY = canvas.height - 12;
   mouth.y = (avatarBottomY - AVATAR_H) + (MOUTH_REL_Y * AVATAR_H);
   eatPulse = 0;
@@ -1068,21 +1073,68 @@ function startGame(selectedMode) {
   buildRulesPanel(mode);
   rulesPanel.classList.remove('hidden');
   saveStatus.textContent = '';
+  realInputCount = 0;
+  clearInterval(heartbeatIntervalId);
+  heartbeatIntervalId = setInterval(sendHeartbeat, 20000);
   loop();
 }
 
-function endGame() {
+// para o jogo e limpa a tela, sem decidir ainda o que mostrar (isso é feito
+// por quem chama: endGame() manda o placar de verdade, kickGame() usa uma
+// mensagem própria pra quando o heartbeat pega algo suspeito no meio da partida
+function stopGameLoop() {
   running = false;
   cancelAnimationFrame(animFrameId);
+  clearInterval(heartbeatIntervalId);
+  heartbeatIntervalId = null;
   // limpa o canvas: o cenário animado (bokeh + silhueta) é exclusivo do jogo em si,
   // fora dele (Fim de Jogo, Menu, Ranking) volta ao fundo padrão do site
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   rulesPanel.classList.add('hidden');
+}
+
+function endGame() {
+  stopGameLoop();
   document.getElementById('finalScore').textContent = score;
   document.getElementById('finalMode').textContent = mode === 'eat' ? 'Comer' : 'Cortar';
   gameOverScreen.classList.remove('hidden');
   sfx.gameOver();
   submitScore(score, mode);
+}
+
+// encerra a partida imediatamente por causa de algo suspeito detectado pelo
+// heartbeat (não chama submitScore de novo — a sessão já foi invalidada/banida
+// no próprio heartbeat_session)
+function kickGame(message) {
+  stopGameLoop();
+  currentSessionId = null;
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('finalMode').textContent = mode === 'eat' ? 'Comer' : 'Cortar';
+  gameOverScreen.classList.remove('hidden');
+  saveStatus.textContent = message;
+}
+
+async function sendHeartbeat() {
+  if (!running || !currentSessionId) return;
+  const interactions = realInputCount;
+  realInputCount = 0;
+  try {
+    const { data, error } = await sbClient.rpc('heartbeat_session', {
+      p_session_id: currentSessionId, p_name: getPlayerName(), p_mode: mode,
+      p_current_score: score, p_interactions: interactions
+    });
+    if (error) {
+      console.error(error);
+      return; // erro de rede/servidor não deve interromper o jogo
+    }
+    if (data && data.ok === false && data.reason === 'cheat_detected') {
+      kickGame(`⚠️ Atividade suspeita detectada. Esse nome ficou bloqueado por ${Math.ceil((data.banned_seconds || 3600) / 60)} min.`);
+    } else if (data && data.ok === false && data.reason === 'session_invalid') {
+      kickGame('Sua sessão de jogo expirou. Jogue de novo pelo menu.');
+    }
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 // ---------- SPAWN ----------
@@ -1579,6 +1631,7 @@ function getPointerPos(e) {
 
 canvas.addEventListener('mousemove', e => {
   if (!running) return;
+  realInputCount++;
   const pos = getPointerPos(e);
   if (mode === 'eat') {
     mouthTargetX = pos.x;
@@ -1590,9 +1643,18 @@ canvas.addEventListener('mousemove', e => {
 canvas.addEventListener('touchmove', e => {
   if (!running) return;
   e.preventDefault();
+  realInputCount++;
   const pos = getPointerPos(e);
   if (mode === 'eat') {
-    mouthTargetX = pos.x;
+    // no toque, move relativo ao arrasto (soma o quanto o dedo andou, em vez
+    // de pular pra posição absoluta do toque) — assim um toque parado ou
+    // rápido sem arrastar não "teleporta" a boca até o item; no mouse isso
+    // não é necessário porque o cursor já precisa atravessar a tela de
+    // verdade pra chegar lá
+    if (lastTouchX !== null) {
+      mouthTargetX = Math.max(0, Math.min(canvas.width, mouthTargetX + (pos.x - lastTouchX)));
+    }
+    lastTouchX = pos.x;
   } else if (isPointerDown) {
     handleCutMove(pos);
   }
@@ -1600,17 +1662,29 @@ canvas.addEventListener('touchmove', e => {
 
 canvas.addEventListener('mousedown', e => {
   if (mode !== 'cut' || !running) return;
+  realInputCount++;
   isPointerDown = true;
   trail = [getPointerPos(e)];
 });
 canvas.addEventListener('touchstart', e => {
-  if (mode !== 'cut' || !running) return;
+  if (!running) return;
+  // essencial: sem isso, o navegador entende que o toque não foi tratado e
+  // dispara por baixo os eventos de mouse "de compatibilidade" (mousemove
+  // etc.), que pulam a boca pra posição absoluta — anulando o fix do arrasto
+  e.preventDefault();
+  realInputCount++;
+  if (mode === 'eat') {
+    lastTouchX = getPointerPos(e).x;
+    return;
+  }
+  if (mode !== 'cut') return;
   isPointerDown = true;
   trail = [getPointerPos(e)];
-});
+}, { passive: false });
 
 function stopCutting() {
   isPointerDown = false;
+  lastTouchX = null;
 }
 canvas.addEventListener('mouseup', stopCutting);
 canvas.addEventListener('touchend', stopCutting);
