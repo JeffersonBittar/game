@@ -851,7 +851,7 @@ const BOMB_EMOJI = '💣';
 
 const EAT_MAX_LIVES = 3; // vidas iniciais/máximas no modo comer
 const HEART_EMOJI = '❤️';
-const HEART_CHANCE = 0.05; // 5% de chance de cair um coração em vez de comida
+const HEART_CHANCE = 0.03; // 3% de chance de cair um coração em vez de comida
 
 const CUT_MAX_LIVES = 3; // vidas iniciais/máximas no modo cortar
 const CUT_POINTS_MIN = 10;
@@ -1190,13 +1190,13 @@ function spawnItem() {
 
   const mult = speedMultiplier();
 
-  // pontuação do item: doce = valor fixo (ranking de "gostosura"); saudável = perda aleatória (-20 a -100)
+  // pontuação do item: doce = valor fixo (ranking de "gostosura"); saudável = perda aleatória (-1 a -50)
   let points = 10;
   if (mode === 'eat' && !isBomb && !isHeart) {
     if (SWEET_POINTS.hasOwnProperty(emoji)) {
       points = SWEET_POINTS[emoji];
     } else {
-      points = -(Math.floor(Math.random() * (100 - 20 + 1)) + 20); // -20 a -100
+      points = -(Math.floor(Math.random() * (50 - 1 + 1)) + 1); // -1 a -50
     }
   } else if (mode === 'cut' && !isBomb && !isHeart) {
     points = Math.floor(Math.random() * (CUT_POINTS_MAX - CUT_POINTS_MIN + 1)) + CUT_POINTS_MIN; // 10 a 100, sem desconto
