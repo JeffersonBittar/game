@@ -1255,6 +1255,12 @@ function update() {
       const dx = Math.abs(it.x - mouth.x);
       const dy = Math.abs(it.y - mouth.y);
       if (dx < mouth.w / 2 && dy < mouth.h / 2) {
+        // conta como "interação real" pro anti-cheat: mesmo sem arrastar,
+        // um item cair certinho na boca é um evento de jogo de verdade (a
+        // física rodou e colidiu), diferente de pontuação injetada via
+        // console sem o jogo estar rodando de fato — evita falso positivo
+        // de ban em quem fica parado e pega um item por sorte
+        realInputCount++;
         if (it.isHeart) {
           if (lives < EAT_MAX_LIVES) {
             lives++;
